@@ -1,19 +1,22 @@
 use rscam::{Camera, Config};
 use termion;
 // use std::{thread, time};
+use termion::screen::AlternateScreen;
+use std::io::{Write, stdout};
+
+// Set assci character arr
+const ASCII_ARR: &[u8] = b" .\'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
+const ASCII_CONST: f64 = (ASCII_ARR.len() - 1) as f64 / 255.0;
+// Set camera config
+const CAMARA_WIDTH: u32 = 1280;
+const CAMARA_HEIGHT: u32 = 720;
+const CAMARA_FRAME_RATE: u32 = 30;
+// const CAMARA_SLEEP_MS: u64 = ((1.0/30 as f64) * 1000.0) as u64;
+// const CAMARA_DUR: time::Duration = time::Duration::from_millis(((1.0/30 as f64) * 1000.0) as u64);
+const CAMARA_ASPECT_RATIO: f64 = CAMARA_HEIGHT as f64 / CAMARA_WIDTH as f64;
+
 
 fn main() {
-    // Set assci character arr
-    const ASCII_ARR: &[u8] = b" .\'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
-    const ASCII_CONST: f64 = (ASCII_ARR.len() - 1) as f64 / 255.0;
-    // Set camera config
-    const CAMARA_WIDTH: u32 = 1280;
-    const CAMARA_HEIGHT: u32 = 720;
-    const CAMARA_FRAME_RATE: u32 = 30;
-    // const CAMARA_SLEEP_MS: u64 = ((1.0/30 as f64) * 1000.0) as u64;
-    // const CAMARA_DUR: time::Duration = time::Duration::from_millis(((1.0/30 as f64) * 1000.0) as u64);
-    const CAMARA_ASPECT_RATIO: f64 = CAMARA_HEIGHT as f64 / CAMARA_WIDTH as f64;
-
     // Start camara
     let mut camera: Camera = Camera::new("/dev/video0").unwrap();
     // set camara config
@@ -23,14 +26,17 @@ fn main() {
         format: b"RGB3",
         ..Default::default()
     }).unwrap();
+
+    // Screen
+    let mut screen = AlternateScreen::from(stdout());
     
     loop {
         // let start = time::Instant::now();
 
         // Get size of terminal window
         let size = termion::terminal_size().unwrap();
-        let terminal_width: u32 = size.0 as u32; 
-        let terminal_height: u32 = size.1 as u32;
+        let terminal_width: f64 = size.0 as f64; 
+        let terminal_height: f64 = size.1 as f64;
 
         // STEP 1: Cal max size of image
         // calcuelate largest image that fits in terminal window
@@ -39,20 +45,20 @@ fn main() {
         let scale_factor: f64;
 
         // Work out aspect ratio of terminal
-        let terminal_aspect_ratio: f64 = terminal_height as f64 / terminal_width as f64;
+        let terminal_aspect_ratio: f64 = (terminal_height * 2.0) / terminal_width ;
         
         // height / width = ratio
         // width2 * ratio = height2
         // height2 / ratio = width2
         if terminal_aspect_ratio > CAMARA_ASPECT_RATIO {
             // camara width is limiting factor
-            width = terminal_width;
-            height = (terminal_width as f64 * CAMARA_ASPECT_RATIO) as u32;
-            scale_factor = terminal_width as f64 / CAMARA_HEIGHT as f64;
+            width = terminal_width as u32;
+            height = (terminal_width * CAMARA_ASPECT_RATIO) as u32;
+            scale_factor = terminal_width  / CAMARA_HEIGHT as f64;
         } else {
             // camara height is limiting factor
-            width = (terminal_height as f64 / CAMARA_ASPECT_RATIO) as u32;
-            height = terminal_height;
+            width = (terminal_height / CAMARA_ASPECT_RATIO) as u32;
+            height = terminal_height as u32;
             scale_factor = terminal_height as f64 / CAMARA_HEIGHT as f64;
         }
 
@@ -94,14 +100,10 @@ fn main() {
             }
             output.push('\n');
         }
-        println!("{}", output);
+        write!(screen, "{}", output).unwrap();
+        screen.flush().unwrap();
+        //print!("{}{}{}", termion::clear::All, termion::cursor::Goto(1,1), output)
         // println!("{:?}", start.elapsed());
         // thread::sleep(CAMARA_DUR - start.elapsed());
     }
-
-
-    // println!("{} {} {}", CAMARA_WIDTH, CAMARA_HEIGHT, CAMARA_ASPECT_RATIO);
-    // println!("{} {} {}", terminal_width, terminal_height, terminal_aspect_ratio);
-    // println!("{} {} {}", width, height, scale_factor);
-    
 }
